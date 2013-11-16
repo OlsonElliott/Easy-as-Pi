@@ -2,10 +2,10 @@
 #pragma config(Sensor, S1,     ,               sensorI2CMuxController)
 #pragma config(Motor,  motorA,           ,             tmotorNXT, PIDControl)
 #pragma config(Motor,  motorC,          motorGrab,     tmotorNXT, PIDControl)
-#pragma config(Motor,  mtr_S1_C1_1,     motorL,        tmotorTetrix, openLoop)
+#pragma config(Motor,  mtr_S1_C1_1,     motorL,        tmotorTetrix, openLoop, reversed)
 #pragma config(Motor,  mtr_S1_C1_2,     motorR,        tmotorTetrix, openLoop)
 #pragma config(Motor,  mtr_S1_C2_1,     FlagMotor,     tmotorTetrix, openLoop)
-#pragma config(Motor,  mtr_S1_C2_2,      ,             tmotorTetrix, openLoop)
+#pragma config(Motor,  mtr_S1_C2_2,     motorG,        tmotorTetrix, openLoop)
 #pragma config(Servo,  srvo_S1_C3_1,    servoWrist,           tServoStandard)
 #pragma config(Servo,  srvo_S1_C3_2,    servo2,               tServoNone)
 #pragma config(Servo,  srvo_S1_C3_3,    servo3,               tServoNone)
@@ -26,11 +26,9 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "JoystickDriver.c"  //Include file to "handle" the Bluetooth messages.
-
 #define JOYSTICK_MIN 10
-int wrist_pos=24;          //starting position for wrist servo
-bool rotateOn = false;
-const int rotateSpeed = 5;    //speed for flag motor
+
+const int rotateSpeed = 30;    //speed for flag motor
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 //                                    initializeRobot
@@ -44,21 +42,14 @@ const int rotateSpeed = 5;    //speed for flag motor
 
 void initializeRobot()
 {
-	// Place code here to initialize servos to starting positions.
-	// Disabling sensors because of memory bug.
-	SensorType[S2] = sensorNone;
-	SensorType[S3] = sensorNone;
-	SensorType[S4] = sensorNone;
-
-	servoChangeRate[servoWrist] =1;          // Slow the Servo Change Rate down to only 4 positions per update.
-	servo[servoWrist] = wrist_pos;                              // Move servo1 to position to starting position
+	// Move servo1 to position to starting position
 }
 
 // Operate the two drive motors
 void driveMotors()
 {
 	int joyLeft = joystick.joy1_y1;
-	int joyRight = joystick.joy1_y2;
+	int joyRight = -joystick.joy1_y2;
 
 	// If the left or right joysticks are engaged beyond a minimum threshold, operate the drive
 	// motors; else stop them. The threshold is needed because a joystick that's not being touched
@@ -69,27 +60,33 @@ void driveMotors()
 		if (abs(joyLeft) < 80)
 		{
 			if (joyLeft > 0)
-				joyLeft = 1*pow(1+.056,joyLeft);
+				joyLeft = -1*pow(1+.056,joyLeft);
 			else
-				joyLeft = -1*pow(1+.056,abs(joyLeft));
+				joyLeft = 1*pow(1+.056,abs(joyLeft));
 		}
 
 		if (abs(joyRight) < 80)
 		{
 			if (joyRight > 0)
-				joyRight = 1*pow(1+.056,joyRight);
+				joyRight = -1*pow(1+.056,joyRight);
 			else
-				joyRight = -1*pow(1+.056,abs(joyRight));
+				joyRight = 1*pow(1+.056,abs(joyRight));
 		}
 
 		motor[motorL] = (joyLeft)*100/127;
-		motor[motorR] = (joyRight)*100/127;
+		motor[motorR] = (joyRight)*-100/127;
 	}
 	else
 	{
 		motor[motorL] = 0;
 		motor[motorR] = 0;
 	}
+}
+
+void driveMotors (int lspeed, int rspeed)
+{
+	motor[motorL] = lspeed;
+	motor[motorR] = rspeed;
 }
 
 //Raise Flag
@@ -104,7 +101,7 @@ void flagControl(int direction)
 }
 
 int getFlagButtons () {
-  int buttonUp = joy1Btn(6);    //Button for control of the motor to turn flag
+	int buttonUp = joy1Btn(6);    //Button for control of the motor to turn flag
 	return buttonUp;
 }
 /////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -161,6 +158,8 @@ task main()
 		nxtDisplayString(5, "TopHat:  %d", joystick.joy1_TopHat);
 		// Drive Motors
 		flagControl(getFlagButtons());
+
+		driveMotors();
 
 	}
 }
