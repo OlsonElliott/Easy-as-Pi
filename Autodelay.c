@@ -29,7 +29,7 @@
 #include "rdpartyrobotcdr-3.3.1\drivers\hitechnic-irseeker-v2.h"
 
 // Pause for the other alliance?
-#define BEFORE_START_10MS 0
+#define BEFORE_START_10MS
 #define DRIVE_SPEED 60
 #define ENCODER_TICKS_INCH 100
 #define ENCODER_TICKS_90_TURN 2880

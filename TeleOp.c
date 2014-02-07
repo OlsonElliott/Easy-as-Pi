@@ -6,7 +6,7 @@
 #pragma config(Motor,  mtr_S1_C1_2,     motorL,        tmotorTetrix, openLoop, reversed)
 #pragma config(Motor,  mtr_S1_C2_1,     FlagMotor,     tmotorTetrix, openLoop)
 #pragma config(Motor,  mtr_S1_C2_2,     motorG,        tmotorTetrix, openLoop)
-#pragma config(Servo,  srvo_S1_C3_1,    servoWrist,           tServoStandard)
+#pragma config(Servo,  srvo_S1_C3_1,    servoFlip,            tServoStandard)
 #pragma config(Servo,  srvo_S1_C3_2,    servo2,               tServoNone)
 #pragma config(Servo,  srvo_S1_C3_3,    servo3,               tServoNone)
 #pragma config(Servo,  srvo_S1_C3_4,    servo4,               tServoNone)
@@ -39,7 +39,71 @@ const int rotateSpeed = 30;    //speed for flag motor
 // In most cases, you may not have to add any code to this function and it will remain "empty".
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////
+#define MOTOR_NUM               5
+#define MOTOR_MAX_VALUE         127
+#define MOTOR_MIN_VALUE         (-127)
+#define MOTOR_DEFAULT_SLEW_RATE 7      // Default will cause 375mS from full fwd to rev
+#define MOTOR_FAST_SLEW_RATE    256     // essentially off
+#define MOTOR_TASK_DELAY        15      // task 1/frequency in mS (about 66Hz)
+#define MOTOR_DEADBAND          10
 
+// Array to hold requested speed for the motors
+int motorReq[ MOTOR_NUM ];
+
+// Array to hold "slew rate" for the motors, the maximum change every time the task
+// runs checking current mootor speed.
+int motorSlew[ MOTOR_NUM ];
+task MotorSlewRateTask()
+{
+	int motorIndex;
+	int motorTmp;
+
+	// Initialize stuff
+	for(motorIndex=0;motorIndex<MOTOR_NUM;motorIndex++)
+	{
+		motorReq[motorIndex] = 0;
+		motorSlew[motorIndex] = MOTOR_DEFAULT_SLEW_RATE;
+	}
+
+ 	// run task until stopped
+	while( true )
+	{
+		// run loop for every motor
+		for( motorIndex=0; motorIndex<MOTOR_NUM; motorIndex++)
+		{
+			// So we don't keep accessing the internal storage
+			motorTmp = motor[ motorIndex ];
+
+			// Do we need to change the motor value ?
+			if( motorTmp != motorReq[motorIndex] )
+			{
+				// increasing motor value
+				if( motorReq[motorIndex] > motorTmp )
+				{
+					motorTmp += motorSlew[motorIndex];
+					// limit
+					if( motorTmp > motorReq[motorIndex] )
+						motorTmp = motorReq[motorIndex];
+				}
+
+				// decreasing motor value
+				if( motorReq[motorIndex] < motorTmp )
+				{
+					motorTmp -= motorSlew[motorIndex];
+					// limit
+					if( motorTmp < motorReq[motorIndex] )
+						motorTmp = motorReq[motorIndex];
+				}
+
+				// finally set motor
+				motor[motorIndex] = motorTmp;
+			}
+		}
+
+		// Wait approx the speed of motor update over the spi bus
+		wait1Msec( MOTOR_TASK_DELAY );
+	}
+}
 void initializeRobot()
 {
 	// Move servo1 to position to starting position
@@ -73,20 +137,20 @@ void driveMotors()
 				joyRight = 1*pow(1+.056,abs(joyRight));
 		}
 
-		motor[motorL] = (joyLeft)*100/127;
-		motor[motorR] = (joyRight)*-100/127;
+		motorReq[motorL] = (joyLeft)*100/127;
+		motorReq[motorR] = (joyRight)*-100/127;
 	}
 	else
 	{
-		motor[motorL] = 0;
-		motor[motorR] = 0;
+		motorReq[motorL] = 0;
+		motorReq[motorR] = 0;
 	}
 }
 
 void driveMotors (int lspeed, int rspeed)
 {
-	motor[motorL] = lspeed;
-	motor[motorR] = rspeed;
+	motorReq[motorL] = lspeed;
+	motorReq[motorR] = rspeed;
 }
 
 //Raise Flag
@@ -134,8 +198,8 @@ int getFlagButtons () {
 task main()
 {
 	initializeRobot();
-
-	//waitForStart();   // wait for start of tele-op phase
+StartTask(MotorSlewRateTask);
+	waitForStart();   // wait for start of tele-op phase
 
 	while (true)
 	{

@@ -275,12 +275,12 @@ task main()
 	waitForStart();
 
 	wait10Msec(BEFORE_START_10MS);
-	MovetoIR();
-	DumpBlock();
-	BackToStart();
-	Turn90(Left);
-	GoInches(InchesToTape, DRIVE_SPEED);
-	Turn90(Right);
+	//MovetoIR();
+	//DumpBlock();
+	//BackToStart();
+	//Turn90(Left);
+	//GoInches(InchesToTape, DRIVE_SPEED);
+	//Turn90(Right);
 	GoInches(InchesToRamp, DRIVE_SPEED);
 
 	// Test Function Here
